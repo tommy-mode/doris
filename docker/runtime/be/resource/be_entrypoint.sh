@@ -473,6 +473,18 @@ function make_dir_for_workloadgroup() {
     if [[ -f "/sys/fs/cgroup/cgroup.controllers" ]]; then
         log_stderr "[info] The host machine cgroup version: v2."
         chmod a+w /sys/fs/cgroup/cgroup.procs
+        # The cpu controller must be enabled on the parent of the doris cgroup,
+        # otherwise cpu.max is not created and max_cpu_percent is not enforced.
+        if ! grep -qw cpu /sys/fs/cgroup/cgroup.subtree_control; then
+            if ! echo "+cpu" > /sys/fs/cgroup/cgroup.subtree_control; then
+                log_stderr "[warn] Failed to enable the cpu controller in /sys/fs/cgroup/cgroup.subtree_control."
+            fi
+        fi
+        if echo "+cpu" > /sys/fs/cgroup/cpu/cgroup.subtree_control; then
+            log_stderr "[info] Enabled the cpu controller in /sys/fs/cgroup/cpu/cgroup.subtree_control."
+        else
+            log_stderr "[warn] Failed to enable the cpu controller in /sys/fs/cgroup/cpu/cgroup.subtree_control, workload group cpu limit may not work."
+        fi
     else
         log_stderr "[info] The host machine cgroup version: v1."
     fi
